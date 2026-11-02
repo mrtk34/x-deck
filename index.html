@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deck Projem</title>
+  <!-- Tailwind'i internetten çağırıyoruz, kurulum gerekmez -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-black text-white h-screen flex overflow-hidden">
+
+  <!-- SOL MENÜ ÇUBUĞU -->
+  <aside class="w-16 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4 gap-6">
+    <div class="text-2xl font-bold">𝕏</div>
+
+    <!-- Sütun Ekle butonu -->
+    <button id="sutunEkleBtn" title="Sütun Ekle"
+      class="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-2xl flex items-center justify-center">
+      +
+    </button>
+  </aside>
+
+  <!-- SÜTUNLARIN OLDUĞU ALAN (yatay kayar) -->
+  <main id="sutunAlani" class="flex-1 flex overflow-x-auto"></main>
+
+  <script>
+    // ---------- ÖRNEK VERİLER ----------
+    const ornekGonderiler = [
+      { isim: "Ayşe Yılmaz", kullanici: "ayseyilmaz", foto: "https://i.pravatar.cc/80?img=47",
+        metin: "Bugün hava çok güzel, kahvemi alıp parka gidiyorum! ☕🌳" },
+      { isim: "Mehmet Demir", kullanici: "mehmetdemir", foto: "https://i.pravatar.cc/80?img=12",
+        metin: "Yeni bir proje üzerinde çalışıyorum. Heyecanlıyım! 🚀" },
+      { isim: "Zeynep Kaya", kullanici: "zeynepkaya", foto: "https://i.pravatar.cc/80?img=32",
+        metin: "Hafta sonu için kitap önerisi olan var mı? 📚" },
+      { isim: "Can Öztürk", kullanici: "canozturk", foto: "https://i.pravatar.cc/80?img=15",
+        metin: "İstanbul'da bugün trafik yine rekor kırıyor... 🚗" }
+    ];
+
+    // ---------- BAŞLANGIÇ SÜTUNLARI ----------
+    let sutunlar = ["Ana Akış", "Bildirimler", "Arama"];
+
+    // ---------- GÖNDERİ KARTI OLUŞTURAN FONKSİYON ----------
+    function kartOlustur(g) {
+      return `
+        <div class="flex gap-3 p-4 border-b border-zinc-800 hover:bg-zinc-900">
+          <img src="${g.foto}" alt="${g.isim}" class="w-10 h-10 rounded-full">
+          <div>
+            <div class="text-sm">
+              <span class="font-bold">${g.isim}</span>
+              <span class="text-zinc-500">@${g.kullanici}</span>
+            </div>
+            <p class="text-sm mt-1">${g.metin}</p>
+          </div>
+        </div>`;
+    }
+
+    // ---------- SÜTUNLARI EKRANA ÇİZEN FONKSİYON ----------
+    function sutunlariCiz() {
+      const alan = document.getElementById("sutunAlani");
+      alan.innerHTML = "";
+
+      sutunlar.forEach((baslik, sira) => {
+        const kartlar = ornekGonderiler.map(kartOlustur).join("");
+        alan.innerHTML += `
+          <section class="w-80 shrink-0 border-r border-zinc-800 flex flex-col h-full">
+            <header class="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-950">
+              <h2 class="font-bold">${baslik}</h2>
+              <button onclick="sutunSil(${sira})" title="Sütunu Sil"
+                class="text-zinc-400 hover:text-white hover:bg-zinc-800 w-7 h-7 rounded-full">
+                ✕
+              </button>
+            </header>
+            <div class="overflow-y-auto flex-1">${kartlar}</div>
+          </section>`;
+      });
+    }
+
+    // ---------- SÜTUN SİLME ----------
+    function sutunSil(sira) {
+      sutunlar.splice(sira, 1);
+      sutunlariCiz();
+    }
+
+    // ---------- SÜTUN EKLEME ----------
+    document.getElementById("sutunEkleBtn").addEventListener("click", () => {
+      const ad = prompt("Yeni sütunun adı ne olsun?");
+      if (ad && ad.trim() !== "") {
+        sutunlar.push(ad.trim());
+        sutunlariCiz();
+      }
+    });
+
+    // Sayfa açılınca sütunları çiz
+    sutunlariCiz();
+  </script>
+</body>
+</html>

@@ -3,93 +3,308 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Deck Projem</title>
-  <!-- Tailwind'i internetten çağırıyoruz, kurulum gerekmez -->
+  <title>X Deck</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-black text-white h-screen flex overflow-hidden">
 
   <!-- SOL MENÜ ÇUBUĞU -->
-  <aside class="w-16 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4 gap-6">
+  <aside class="w-16 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-4 gap-5 shrink-0">
     <div class="text-2xl font-bold">𝕏</div>
 
-    <!-- Sütun Ekle butonu -->
-    <button id="sutunEkleBtn" title="Sütun Ekle"
-      class="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-2xl flex items-center justify-center">
-      +
-    </button>
+    <button onclick="sutunPenceresiAc()" title="Sütun Ekle"
+      class="w-10 h-10 rounded-full bg-blue-500 hover:bg-blue-600 text-2xl flex items-center justify-center">+</button>
+
+    <button onclick="yazPenceresiAc()" title="Gönderi Yaz"
+      class="w-10 h-10 rounded-full bg-zinc-800 hover:bg-zinc-700 text-lg flex items-center justify-center">✎</button>
+
+    <button onclick="sifirla()" title="Başlangıç haline döndür"
+      class="mt-auto w-10 h-10 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 flex items-center justify-center">⟳</button>
   </aside>
 
   <!-- SÜTUNLARIN OLDUĞU ALAN (yatay kayar) -->
   <main id="sutunAlani" class="flex-1 flex overflow-x-auto"></main>
 
+  <!-- PENCERE: SÜTUN EKLE -->
+  <div id="sutunPenceresi" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-sm">
+      <h3 class="font-bold text-lg mb-4">Yeni Sütun Ekle</h3>
+
+      <label class="text-sm text-zinc-400">Sütun türü</label>
+      <select id="sutunTur" class="w-full mt-1 mb-4 bg-black border border-zinc-700 rounded-lg px-3 py-2">
+        <option value="akis">Ana Akış</option>
+        <option value="bildirim">Bildirimler</option>
+        <option value="arama">Arama</option>
+        <option value="ozel">Özel Liste</option>
+      </select>
+
+      <label class="text-sm text-zinc-400">Sütun adı (boş bırakırsan tür adı kullanılır)</label>
+      <input id="sutunAd" type="text" maxlength="30"
+        class="w-full mt-1 mb-6 bg-black border border-zinc-700 rounded-lg px-3 py-2" placeholder="Örn: Haberler">
+
+      <div class="flex justify-end gap-3">
+        <button onclick="sutunPenceresiKapat()" class="px-4 py-2 rounded-full hover:bg-zinc-800">İptal</button>
+        <button onclick="sutunEkle()" class="px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 font-bold">Ekle</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PENCERE: GÖNDERİ YAZ -->
+  <div id="yazPenceresi" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-2xl p-6 w-full max-w-md">
+      <h3 class="font-bold text-lg mb-4">Gönderi Yaz</h3>
+      <textarea id="yazMetin" rows="4" maxlength="280" oninput="sayacGuncelle()"
+        class="w-full bg-black border border-zinc-700 rounded-lg px-3 py-2 resize-none"
+        placeholder="Neler oluyor?"></textarea>
+      <div class="flex items-center justify-between mt-4">
+        <span id="sayac" class="text-sm text-zinc-500">0 / 280</span>
+        <div class="flex gap-3">
+          <button onclick="yazPenceresiKapat()" class="px-4 py-2 rounded-full hover:bg-zinc-800">İptal</button>
+          <button onclick="paylas()" class="px-4 py-2 rounded-full bg-blue-500 hover:bg-blue-600 font-bold">Paylaş</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // ---------- ÖRNEK VERİLER ----------
-    const ornekGonderiler = [
-      { isim: "Ayşe Yılmaz", kullanici: "ayseyilmaz", foto: "https://i.pravatar.cc/80?img=47",
-        metin: "Bugün hava çok güzel, kahvemi alıp parka gidiyorum! ☕🌳" },
-      { isim: "Mehmet Demir", kullanici: "mehmetdemir", foto: "https://i.pravatar.cc/80?img=12",
-        metin: "Yeni bir proje üzerinde çalışıyorum. Heyecanlıyım! 🚀" },
-      { isim: "Zeynep Kaya", kullanici: "zeynepkaya", foto: "https://i.pravatar.cc/80?img=32",
-        metin: "Hafta sonu için kitap önerisi olan var mı? 📚" },
-      { isim: "Can Öztürk", kullanici: "canozturk", foto: "https://i.pravatar.cc/80?img=15",
-        metin: "İstanbul'da bugün trafik yine rekor kırıyor... 🚗" }
+    // ---------- GENEL AYARLAR ----------
+    const ANAHTAR = "xdeck-durum-v1";
+    const TURLER = { akis: "Ana Akış", bildirim: "Bildirimler", arama: "Arama", ozel: "Özel Liste" };
+
+    // Bildirimler sütununda görünen sabit örnekler
+    const bildirimler = [
+      { isim: "Ayşe Yılmaz", kullanici: "ayseyilmaz", foto: "https://i.pravatar.cc/80?img=47", metin: "gönderini beğendi ♥" },
+      { isim: "Mehmet Demir", kullanici: "mehmetdemir", foto: "https://i.pravatar.cc/80?img=12", metin: "seni takip etti" },
+      { isim: "Zeynep Kaya", kullanici: "zeynepkaya", foto: "https://i.pravatar.cc/80?img=32", metin: "gönderini yeniden paylaştı ↻" },
+      { isim: "Can Öztürk", kullanici: "canozturk", foto: "https://i.pravatar.cc/80?img=15", metin: "sana yanıt verdi" }
     ];
 
-    // ---------- BAŞLANGIÇ SÜTUNLARI ----------
-    let sutunlar = ["Ana Akış", "Bildirimler", "Arama"];
-
-    // ---------- GÖNDERİ KARTI OLUŞTURAN FONKSİYON ----------
-    function kartOlustur(g) {
-      return `
-        <div class="flex gap-3 p-4 border-b border-zinc-800 hover:bg-zinc-900">
-          <img src="${g.foto}" alt="${g.isim}" class="w-10 h-10 rounded-full">
-          <div>
-            <div class="text-sm">
-              <span class="font-bold">${g.isim}</span>
-              <span class="text-zinc-500">@${g.kullanici}</span>
-            </div>
-            <p class="text-sm mt-1">${g.metin}</p>
-          </div>
-        </div>`;
+    // ---------- BAŞLANGIÇ DURUMU ----------
+    function varsayilanDurum() {
+      return {
+        sutunlar: [
+          { id: 1, baslik: "Ana Akış", tur: "akis" },
+          { id: 2, baslik: "Bildirimler", tur: "bildirim" },
+          { id: 3, baslik: "Arama", tur: "arama", sorgu: "" }
+        ],
+        gonderiler: [
+          { id: 101, isim: "Ayşe Yılmaz", kullanici: "ayseyilmaz", foto: "https://i.pravatar.cc/80?img=47", zaman: "2 dk",
+            metin: "Bugün hava çok güzel, kahvemi alıp parka gidiyorum! ☕🌳", begeniSayi: 12, rtSayi: 2, begendi: false, rt: false },
+          { id: 102, isim: "Mehmet Demir", kullanici: "mehmetdemir", foto: "https://i.pravatar.cc/80?img=12", zaman: "15 dk",
+            metin: "Yeni bir proje üzerinde çalışıyorum. Heyecanlıyım! 🚀", begeniSayi: 34, rtSayi: 5, begendi: false, rt: false },
+          { id: 103, isim: "Zeynep Kaya", kullanici: "zeynepkaya", foto: "https://i.pravatar.cc/80?img=32", zaman: "1 sa",
+            metin: "Hafta sonu için kitap önerisi olan var mı? 📚", begeniSayi: 8, rtSayi: 0, begendi: false, rt: false },
+          { id: 104, isim: "Can Öztürk", kullanici: "canozturk", foto: "https://i.pravatar.cc/80?img=15", zaman: "3 sa",
+            metin: "İstanbul'da bugün trafik yine rekor kırıyor... 🚗", begeniSayi: 21, rtSayi: 3, begendi: false, rt: false }
+        ]
+      };
     }
 
-    // ---------- SÜTUNLARI EKRANA ÇİZEN FONKSİYON ----------
+    // ---------- KAYDET / YÜKLE (tarayıcının hafızası) ----------
+    function yukle() {
+      try {
+        const kayit = localStorage.getItem(ANAHTAR);
+        if (kayit) return JSON.parse(kayit);
+      } catch (e) {}
+      return varsayilanDurum();
+    }
+
+    function kaydet() {
+      try { localStorage.setItem(ANAHTAR, JSON.stringify(durum)); } catch (e) {}
+    }
+
+    let durum = yukle();
+
+    // ---------- YARDIMCI: yazıyı güvenli hale getir ----------
+    function temiz(yazi) {
+      return String(yazi).replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    // ---------- KARTLAR ----------
+    function gonderiKart(g) {
+      return `
+        <article class="flex gap-3 p-4 border-b border-zinc-800 hover:bg-zinc-900/50">
+          <img src="${g.foto}" alt="" class="w-10 h-10 rounded-full shrink-0">
+          <div class="min-w-0 flex-1">
+            <div class="text-sm flex flex-wrap gap-x-1">
+              <span class="font-bold">${temiz(g.isim)}</span>
+              <span class="text-zinc-500">@${temiz(g.kullanici)} · ${temiz(g.zaman)}</span>
+            </div>
+            <p class="text-sm mt-1 break-words whitespace-pre-wrap">${temiz(g.metin)}</p>
+            <div class="flex gap-6 mt-3 text-sm text-zinc-500">
+              <button title="Yanıtla" class="hover:text-blue-400">↩</button>
+              <button onclick="rtDegistir(${g.id})" title="Yeniden paylaş"
+                class="${g.rt ? "text-green-400" : "hover:text-green-400"}">↻ ${g.rtSayi}</button>
+              <button onclick="begeniDegistir(${g.id})" title="Beğen"
+                class="${g.begendi ? "text-pink-500" : "hover:text-pink-500"}">${g.begendi ? "♥" : "♡"} ${g.begeniSayi}</button>
+            </div>
+          </div>
+        </article>`;
+    }
+
+    function bildirimKart(b) {
+      return `
+        <article class="flex gap-3 p-4 border-b border-zinc-800 hover:bg-zinc-900/50">
+          <img src="${b.foto}" alt="" class="w-10 h-10 rounded-full shrink-0">
+          <div class="text-sm">
+            <span class="font-bold">${temiz(b.isim)}</span>
+            <span class="text-zinc-400"> ${temiz(b.metin)}</span>
+          </div>
+        </article>`;
+    }
+
+    function mesaj(yazi) {
+      return `<p class="p-6 text-center text-sm text-zinc-500">${yazi}</p>`;
+    }
+
+    // ---------- SÜTUNUN İÇERİĞİ (türüne göre) ----------
+    function listeIcerik(s) {
+      if (s.tur === "bildirim") {
+        return bildirimler.map(bildirimKart).join("");
+      }
+      if (s.tur === "arama") {
+        const q = (s.sorgu || "").trim().toLowerCase();
+        if (!q) return mesaj("Aramak için yukarıdaki kutuya bir şey yaz.");
+        const bulunan = durum.gonderiler.filter((g) =>
+          (g.metin + " " + g.isim + " " + g.kullanici).toLowerCase().includes(q));
+        return bulunan.length ? bulunan.map(gonderiKart).join("") : mesaj("Sonuç bulunamadı.");
+      }
+      // Ana Akış ve Özel Liste: tüm gönderiler
+      return durum.gonderiler.map(gonderiKart).join("");
+    }
+
+    function sutunHtml(s) {
+      const aramaKutusu = s.tur === "arama" ? `
+        <div class="p-3 border-b border-zinc-800">
+          <input type="text" value="${temiz(s.sorgu || "")}" oninput="aramaYaz(${s.id}, this.value)"
+            placeholder="Gönderilerde ara..."
+            class="w-full bg-zinc-900 border border-zinc-700 rounded-full px-4 py-2 text-sm">
+        </div>` : "";
+
+      return `
+        <section class="w-80 shrink-0 border-r border-zinc-800 flex flex-col h-full">
+          <header class="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-950">
+            <h2 class="font-bold">${temiz(s.baslik)}</h2>
+            <button onclick="sutunSil(${s.id})" title="Sütunu Sil"
+              class="text-zinc-400 hover:text-white hover:bg-zinc-800 w-7 h-7 rounded-full">✕</button>
+          </header>
+          ${aramaKutusu}
+          <div id="liste-${s.id}" data-liste="${s.id}" class="overflow-y-auto flex-1">${listeIcerik(s)}</div>
+        </section>`;
+    }
+
+    // ---------- TÜM SÜTUNLARI EKRANA ÇİZ ----------
     function sutunlariCiz() {
       const alan = document.getElementById("sutunAlani");
-      alan.innerHTML = "";
 
-      sutunlar.forEach((baslik, sira) => {
-        const kartlar = ornekGonderiler.map(kartOlustur).join("");
-        alan.innerHTML += `
-          <section class="w-80 shrink-0 border-r border-zinc-800 flex flex-col h-full">
-            <header class="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-950">
-              <h2 class="font-bold">${baslik}</h2>
-              <button onclick="sutunSil(${sira})" title="Sütunu Sil"
-                class="text-zinc-400 hover:text-white hover:bg-zinc-800 w-7 h-7 rounded-full">
-                ✕
-              </button>
-            </header>
-            <div class="overflow-y-auto flex-1">${kartlar}</div>
-          </section>`;
+      // Kaydırma konumlarını hatırla (çizim sonrası yerine koyacağız)
+      const eskiKonumlar = {};
+      document.querySelectorAll("[data-liste]").forEach((el) => {
+        eskiKonumlar[el.dataset.liste] = el.scrollTop;
       });
+      const solKonum = alan.scrollLeft;
+
+      alan.innerHTML = durum.sutunlar.length
+        ? durum.sutunlar.map(sutunHtml).join("")
+        : `<div class="m-auto text-zinc-500">Hiç sütun yok. Soldaki + butonuyla ekleyebilirsin.</div>`;
+
+      document.querySelectorAll("[data-liste]").forEach((el) => {
+        if (eskiKonumlar[el.dataset.liste] !== undefined) el.scrollTop = eskiKonumlar[el.dataset.liste];
+      });
+      alan.scrollLeft = solKonum;
     }
 
     // ---------- SÜTUN SİLME ----------
-    function sutunSil(sira) {
-      sutunlar.splice(sira, 1);
+    function sutunSil(id) {
+      durum.sutunlar = durum.sutunlar.filter((s) => s.id !== id);
+      kaydet();
       sutunlariCiz();
     }
 
-    // ---------- SÜTUN EKLEME ----------
-    document.getElementById("sutunEkleBtn").addEventListener("click", () => {
-      const ad = prompt("Yeni sütunun adı ne olsun?");
-      if (ad && ad.trim() !== "") {
-        sutunlar.push(ad.trim());
+    // ---------- ARAMA ----------
+    function aramaYaz(id, deger) {
+      const s = durum.sutunlar.find((x) => x.id === id);
+      if (!s) return;
+      s.sorgu = deger;
+      kaydet();
+      document.getElementById("liste-" + id).innerHTML = listeIcerik(s);
+    }
+
+    // ---------- BEĞENİ ve YENİDEN PAYLAŞ ----------
+    function begeniDegistir(id) {
+      const g = durum.gonderiler.find((x) => x.id === id);
+      if (!g) return;
+      g.begendi = !g.begendi;
+      g.begeniSayi += g.begendi ? 1 : -1;
+      kaydet();
+      sutunlariCiz();
+    }
+
+    function rtDegistir(id) {
+      const g = durum.gonderiler.find((x) => x.id === id);
+      if (!g) return;
+      g.rt = !g.rt;
+      g.rtSayi += g.rt ? 1 : -1;
+      kaydet();
+      sutunlariCiz();
+    }
+
+    // ---------- SÜTUN EKLE PENCERESİ ----------
+    function sutunPenceresiAc() {
+      document.getElementById("sutunAd").value = "";
+      document.getElementById("sutunPenceresi").classList.remove("hidden");
+    }
+    function sutunPenceresiKapat() {
+      document.getElementById("sutunPenceresi").classList.add("hidden");
+    }
+    function sutunEkle() {
+      const tur = document.getElementById("sutunTur").value;
+      const ad = document.getElementById("sutunAd").value.trim() || TURLER[tur];
+      durum.sutunlar.push({ id: Date.now(), baslik: ad, tur: tur, sorgu: "" });
+      kaydet();
+      sutunlariCiz();
+      sutunPenceresiKapat();
+      const alan = document.getElementById("sutunAlani");
+      alan.scrollLeft = alan.scrollWidth; // yeni sütuna kaydır
+    }
+
+    // ---------- GÖNDERİ YAZ PENCERESİ ----------
+    function yazPenceresiAc() {
+      document.getElementById("yazMetin").value = "";
+      sayacGuncelle();
+      document.getElementById("yazPenceresi").classList.remove("hidden");
+      document.getElementById("yazMetin").focus();
+    }
+    function yazPenceresiKapat() {
+      document.getElementById("yazPenceresi").classList.add("hidden");
+    }
+    function sayacGuncelle() {
+      const uzunluk = document.getElementById("yazMetin").value.length;
+      document.getElementById("sayac").textContent = uzunluk + " / 280";
+    }
+    function paylas() {
+      const metin = document.getElementById("yazMetin").value.trim();
+      if (!metin) return;
+      durum.gonderiler.unshift({
+        id: Date.now(), isim: "Ben", kullanici: "ben",
+        foto: "https://i.pravatar.cc/80?img=5", zaman: "şimdi",
+        metin: metin, begeniSayi: 0, rtSayi: 0, begendi: false, rt: false
+      });
+      kaydet();
+      sutunlariCiz();
+      yazPenceresiKapat();
+    }
+
+    // ---------- SIFIRLA ----------
+    function sifirla() {
+      if (confirm("Tüm sütunlar ve gönderiler başlangıç haline dönecek. Emin misin?")) {
+        durum = varsayilanDurum();
+        kaydet();
         sutunlariCiz();
       }
-    });
+    }
 
     // Sayfa açılınca sütunları çiz
     sutunlariCiz();
